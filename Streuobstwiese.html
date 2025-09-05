@@ -102,6 +102,10 @@
                         <p class="text-gray-500 text-center">Keine Notizen vorhanden.</p>
                     </div>
                 </div>
+                <!-- Neuer Button für die KI-Analyse -->
+                <button id="analyzeButton" class="w-full mt-4 bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-700 transition-colors">
+                    Notizen analysieren (KI)
+                </button>
             </div>
         </div>
 
@@ -157,6 +161,21 @@
                 <button id="closeQrScannerButton" class="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors">
                     Abbrechen
                 </button>
+            </div>
+        </div>
+
+        <!-- KI-Analyse Modal -->
+        <div id="analysisModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg p-6 shadow-xl max-w-lg w-full">
+                <h2 class="text-xl font-bold mb-4">KI-Analyse der Notizen</h2>
+                <div id="analysisContent" class="text-gray-700 max-h-96 overflow-y-auto scroll-container mb-6 leading-relaxed">
+                    <!-- Inhalt wird hier eingefügt -->
+                </div>
+                <div class="flex justify-end">
+                    <button id="closeAnalysisModalButton" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors">
+                        Schließen
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -223,6 +242,12 @@
         const qrReader = document.getElementById('qr-reader');
         const closeQrScannerButton = document.getElementById('closeQrScannerButton');
         let html5QrCode;
+
+        // Neue Elemente für die KI-Analyse
+        const analyzeButton = document.getElementById('analyzeButton');
+        const analysisModal = document.getElementById('analysisModal');
+        const analysisContent = document.getElementById('analysisContent');
+        const closeAnalysisModalButton = document.getElementById('closeAnalysisModalButton');
 
         // Define an array of subtle background colors
         const backgroundColors = [
@@ -570,7 +595,7 @@
                                         showStatus('Notiz erfolgreich gelöscht.', false);
                                     } catch (error) {
                                         console.error("Fehler beim Löschen der Notiz:", error);
-                                        showStatus(`Fehler beim Löschen: ${error.message}`, true);
+                                        showStatus(`Fehler beim Speichern der Notiz: ${error.message}`, true);
                                     }
                                 });
                             });
@@ -754,6 +779,95 @@
             }
         });
 
+        // Event-Listener für den neuen Analyse-Button
+        analyzeButton.addEventListener('click', async () => {
+            if (!selectedTreeId) {
+                showAlertDialog('Kein Baum ausgewählt, um Notizen zu analysieren.');
+                return;
+            }
+            await analyzeNotesWithAI();
+        });
+
+        // Schließen des KI-Analyse-Modals
+        closeAnalysisModalButton.addEventListener('click', () => {
+            analysisModal.classList.add('hidden');
+        });
+
+        // Funktion zur Anzeige des Analyse-Modals
+        function showAnalysisModal(content) {
+            analysisContent.innerHTML = content.replace(/\n/g, '<br>'); // Zeilenumbrüche für HTML
+            analysisModal.classList.remove('hidden');
+        }
+
+        // Funktion zur Analyse der Notizen mit KI
+        async function analyzeNotesWithAI() {
+            showLoading(true);
+            try {
+                const notesCollectionRef = collection(db, 'streuobst_wiese', selectedTreeId, 'notizen');
+                const querySnapshot = await getDocs(notesCollectionRef);
+                
+                if (querySnapshot.empty) {
+                    showLoading(false);
+                    showAlertDialog('Keine Notizen für diesen Baum zum Analysieren gefunden.');
+                    return;
+                }
+                
+                const notes = [];
+                querySnapshot.forEach(doc => {
+                    const noteData = doc.data();
+                    const date = noteData.timestamp ? new Date(noteData.timestamp.seconds * 1000).toLocaleDateString('de-DE') : 'Datum unbekannt';
+                    notes.push(`- [${date}] ${noteData.text}`);
+                });
+
+                const allNotesText = notes.join('\n');
+                
+                // Wir fassen System-Prompt und Benutzerabfrage zusammen, um das API-Verhalten zu stabilisieren.
+                const combinedPrompt = `Sie sind ein erfahrener Gärtner und Obstbaumspezialist. Analysieren Sie die bereitgestellten Notizen für einen Obstbaum. Geben Sie eine prägnante Zusammenfassung der wichtigsten Beobachtungen und identifizieren Sie potenzielle Probleme oder empfohlene Maßnahmen. Schreiben Sie als wäre es eine kurze, professionelle Beurteilung.
+                
+                Analysiere die folgenden Notizen:\n\n${allNotesText}`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [{ text: combinedPrompt }]
+                    }]
+                };
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `API-Fehler: ${response.statusText}`;
+                    if (response.status === 403) {
+                        errorMessage = "API-Fehler: Zugriff verweigert. Bitte überprüfen Sie den API-Schlüssel oder die Service-Berechtigungen.";
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const analysisText = candidate.content.parts[0].text;
+                    showLoading(false);
+                    showAnalysisModal(analysisText);
+                } else {
+                    showLoading(false);
+                    throw new Error('Keine Analyse von der KI erhalten.');
+                }
+
+            } catch (error) {
+                showLoading(false);
+                console.error("Fehler bei der KI-Analyse:", error);
+                showAlertDialog(`Fehler bei der Analyse: ${error.message}`);
+            }
+        }
+        
         initializeAppAndAuth();
     </script>
 </body>
