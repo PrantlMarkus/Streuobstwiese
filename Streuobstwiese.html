@@ -204,6 +204,7 @@
         let unsubscribeNotes = null;
         let isEditing = false;
         let treeIdToEdit = null;
+        let currentTreeData = {};
 
         const loadingIndicator = document.getElementById('loadingIndicator');
         const statusMessage = document.getElementById('statusMessage');
@@ -361,6 +362,8 @@
             treeListSection.classList.add('hidden');
             notesSection.classList.remove('hidden');
             
+            currentTreeData = tree;
+
             // Setzt die Überschriften basierend auf Name und Sorte
             treeNameHeading.textContent = tree.name;
             treeVarietyHeading.textContent = tree.variety;
@@ -820,9 +823,15 @@
                 });
 
                 const allNotesText = notes.join('\n');
+
+                const treeName = currentTreeData.name || 'Unbekannter Name';
+                const treeVariety = currentTreeData.variety || 'Unbekannte Sorte';
                 
                 // Wir fassen System-Prompt und Benutzerabfrage zusammen, um das API-Verhalten zu stabilisieren.
                 const combinedPrompt = `Sie sind ein erfahrener Gärtner und Obstbaumspezialist. Analysieren Sie die bereitgestellten Notizen für einen Obstbaum. Geben Sie eine prägnante Zusammenfassung der wichtigsten Beobachtungen und identifizieren Sie potenzielle Probleme oder empfohlene Maßnahmen. Schreiben Sie als wäre es eine kurze, professionelle Beurteilung.
+                
+                Baum: ${treeName}
+                Sorte: ${treeVariety}
                 
                 Analysiere die folgenden Notizen:\n\n${allNotesText}`;
                 
