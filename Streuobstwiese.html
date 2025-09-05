@@ -37,7 +37,8 @@
         }
 
         .clickable-heading:hover {
-            color: #16a34a; /* Tailwind's green-600 */
+            color: #16a34a;
+            /* Tailwind's green-600 */
         }
     </style>
 </head>
@@ -64,6 +65,11 @@
                 <button id="addTreeButton" class="w-full bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition-colors">
                     Baum hinzufügen
                 </button>
+                <!-- Neuer Button für die allgemeine Analyse -->
+                <button id="analyzeOverallButton" class="w-full bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-700 transition-colors mt-4">
+                    Gesamtanalyse (KI)
+                </button>
+
 
                 <div class="bg-gray-100 p-4 rounded-lg mt-6 shadow-inner">
                     <h2 class="text-xl font-semibold text-gray-700 mb-4">Obstbäume</h2>
@@ -78,7 +84,7 @@
                 <button id="backButton" class="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-400 transition-colors mb-4">
                     ← Zurück
                 </button>
-                
+
                 <div class="flex items-center space-x-4 mb-4">
                     <div id="qrNotesContainer" class="p-2 bg-white rounded-lg cursor-pointer"></div>
                     <div>
@@ -102,7 +108,7 @@
                         <p class="text-gray-500 text-center">Keine Notizen vorhanden.</p>
                     </div>
                 </div>
-                <!-- Neuer Button für die KI-Analyse -->
+                <!-- Button für die KI-Analyse des einzelnen Baums -->
                 <button id="analyzeButton" class="w-full mt-4 bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-700 transition-colors">
                     Notizen analysieren (KI)
                 </button>
@@ -197,7 +203,7 @@
             appId: "1:395164081126:web:YOUR_APP_ID"
         };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
+
         let app, db, auth;
         let userId;
         let selectedTreeId = null;
@@ -225,7 +231,7 @@
         const modalMessage = document.getElementById('modalMessage');
         const confirmButton = document.getElementById('confirmButton');
         const cancelButton = document.getElementById('cancelButton');
-        
+
         // Neue Elemente für das Baum-Hinzufügen-Modal
         const addTreeButton = document.getElementById('addTreeButton');
         const addTreeModal = document.getElementById('addTreeModal');
@@ -246,6 +252,7 @@
 
         // Neue Elemente für die KI-Analyse
         const analyzeButton = document.getElementById('analyzeButton');
+        const analyzeOverallButton = document.getElementById('analyzeOverallButton'); // Neuer Button
         const analysisModal = document.getElementById('analysisModal');
         const analysisContent = document.getElementById('analysisContent');
         const closeAnalysisModalButton = document.getElementById('closeAnalysisModalButton');
@@ -319,7 +326,7 @@
             };
             confirmButton.addEventListener('click', confirmHandler);
         }
-        
+
         // Funktion zum Anzeigen des Bestätigungs-Modals
         function showConfirmationModal(message, onConfirm) {
             modalTitle.textContent = 'Bestätigung erforderlich';
@@ -329,7 +336,7 @@
             confirmButton.classList.remove('bg-gray-600', 'hover:bg-gray-700');
             cancelButton.classList.remove('hidden');
             confirmationModal.classList.remove('hidden');
-            
+
             // Event-Listener für die Buttons
             const confirmHandler = () => {
                 confirmationModal.classList.add('hidden');
@@ -361,7 +368,7 @@
         function showNotesView(tree) {
             treeListSection.classList.add('hidden');
             notesSection.classList.remove('hidden');
-            
+
             currentTreeData = tree;
 
             // Setzt die Überschriften basierend auf Name und Sorte
@@ -370,7 +377,7 @@
 
             selectedTreeId = tree.id;
             qrNotesContainer.innerHTML = '';
-            
+
             // Fügt Klick-Listener für die Bearbeitung hinzu
             const editClickHandler = () => openEditTreeModal(tree);
             treeNameHeading.addEventListener('click', editClickHandler);
@@ -381,9 +388,9 @@
                 text: tree.id,
                 width: 100,
                 height: 100,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
             });
 
             // Ereignis-Listener für den QR-Code, um das Druckfenster zu öffnen
@@ -408,7 +415,7 @@
                     `);
                     printWindow.document.close();
                     printWindow.focus();
-                    
+
                     // Der Timeout stellt sicher, dass der Inhalt geladen ist, bevor gedruckt wird
                     setTimeout(() => {
                         printWindow.print();
@@ -419,17 +426,20 @@
 
             setupNotesListener(tree.id);
         }
-        
+
         // Funktion zum Abrufen eines Baumes und Anzeigen der Notizen
         async function fetchAndShowNotesForTree(treeId) {
             showLoading(true);
             try {
                 const treeDocRef = doc(db, 'streuobst_wiese', treeId);
                 const treeSnap = await getDoc(treeDocRef);
-                
+
                 if (treeSnap.exists()) {
                     showLoading(false);
-                    const treeData = { id: treeSnap.id, ...treeSnap.data() };
+                    const treeData = {
+                        id: treeSnap.id,
+                        ...treeSnap.data()
+                    };
                     showNotesView(treeData);
                 } else {
                     showLoading(false);
@@ -453,7 +463,10 @@
                     const trees = [];
                     querySnapshot.forEach((doc) => {
                         const treeData = doc.data();
-                        trees.push({ id: doc.id, ...treeData });
+                        trees.push({
+                            id: doc.id,
+                            ...treeData
+                        });
                     });
 
                     if (trees.length === 0) {
@@ -470,18 +483,18 @@
                             }
                             return numA - numB;
                         });
-                        
+
                         trees.forEach(tree => {
                             const treeElement = document.createElement('div');
                             treeElement.classList.add('p-4', 'bg-white', 'rounded-lg', 'border', 'border-gray-200', 'shadow-sm', 'flex', 'items-start', 'space-x-4', 'cursor-pointer', 'hover:bg-gray-50', 'transition-colors');
-                            
+
                             // Farbliche Hervorhebung pro Reihe
                             const colorIndex = (tree.row - 1) % backgroundColors.length;
                             treeElement.style.backgroundColor = backgroundColors[colorIndex];
-                            
+
                             treeElement.dataset.treeId = tree.id;
                             treeElement.dataset.treeName = tree.name;
-                            
+
                             const textContainer = document.createElement('div');
                             textContainer.classList.add('flex-grow');
 
@@ -495,7 +508,7 @@
                             const varietyText = document.createElement('p');
                             varietyText.classList.add('text-gray-600');
                             varietyText.textContent = `Sorte: ${tree.variety}`;
-                            
+
                             textContainer.appendChild(treeLocation);
                             textContainer.appendChild(nameText);
                             textContainer.appendChild(varietyText);
@@ -564,7 +577,10 @@
                     const notes = [];
                     querySnapshot.forEach((doc) => {
                         const noteData = doc.data();
-                        notes.push({ id: doc.id, ...noteData });
+                        notes.push({
+                            id: doc.id,
+                            ...noteData
+                        });
                     });
 
                     if (notes.length === 0) {
@@ -579,7 +595,7 @@
                             const noteElement = document.createElement('div');
                             noteElement.classList.add('p-3', 'bg-white', 'rounded-lg', 'border', 'border-gray-200', 'shadow-sm', 'flex', 'justify-between', 'items-center', 'break-words');
                             const date = note.timestamp ? new Date(note.timestamp.seconds * 1000).toLocaleDateString() : 'Unbekanntes Datum';
-                            
+
                             const textContainer = document.createElement('div');
                             textContainer.classList.add('flex-grow');
                             textContainer.innerHTML = `<p class="text-xs text-gray-400">${date}</p><p class="mt-1">${note.text}</p>`;
@@ -644,12 +660,12 @@
             const number = treeNumberInput.value.trim();
             const name = treeNameInput.value.trim();
             const variety = treeVarietyInput.value.trim();
-            
+
             if (row === "" || number === "" || name === "" || variety === "") {
                 showStatus('Bitte füllen Sie alle Felder aus.', true);
                 return;
             }
-            
+
             try {
                 const treesCollectionRef = collection(db, 'streuobst_wiese');
                 const q = query(treesCollectionRef, where('row', '==', parseInt(row, 10)), where('number', '==', parseInt(number, 10)));
@@ -667,21 +683,23 @@
                         showAlertDialog('Ein anderer Baum mit dieser Reihe und Nummer existiert bereits. Bitte wählen Sie eine andere Kombination.');
                         return;
                     }
-                    
+
                     const treeDocRef = doc(db, 'streuobst_wiese', treeIdToEdit);
                     await setDoc(treeDocRef, {
                         row: parseInt(row, 10),
                         number: parseInt(number, 10),
                         name: name,
                         variety: variety
-                    }, { merge: true }); // 'merge: true' verhindert, dass Notizen überschrieben werden
+                    }, {
+                        merge: true
+                    }); // 'merge: true' verhindert, dass Notizen überschrieben werden
                     showStatus('Baum erfolgreich aktualisiert.', false);
                 } else {
                     if (!querySnapshot.empty) {
                         showAlertDialog('Ein Baum mit dieser Reihe und Nummer existiert bereits.');
                         return;
                     }
-                    
+
                     // Neuen Baum hinzufügen
                     await addDoc(treesCollectionRef, {
                         row: parseInt(row, 10),
@@ -693,7 +711,7 @@
                     });
                     showStatus('Baum erfolgreich hinzugefügt.', false);
                 }
-                
+
                 resetTreeModal();
             } catch (error) {
                 console.error("Fehler beim Speichern des Baumes:", error);
@@ -705,7 +723,7 @@
         noteForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const noteText = noteInput.value.trim();
-            
+
             if (noteText === "") {
                 showStatus('Bitte geben Sie eine Notiz ein.', true);
                 return;
@@ -748,14 +766,22 @@
                 await html5QrCode.stop().catch(err => console.error("Fehler beim Stoppen des Scanners:", err));
             }
             html5QrCode = new Html5Qrcode("qr-reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config,
+            const config = {
+                fps: 10,
+                qrbox: {
+                    width: 250,
+                    height: 250
+                }
+            };
+
+            html5QrCode.start({
+                    facingMode: "environment"
+                }, config,
                 async (decodedText, decodedResult) => {
                     // Erfolg: QR-Code erkannt
                     await html5QrCode.stop();
                     qrScanModal.classList.add('hidden');
-                    
+
                     // Überprüfen, ob der gescannte Text eine gültige Baum-ID ist
                     if (decodedText && decodedText.length > 0) {
                         fetchAndShowNotesForTree(decodedText);
@@ -791,6 +817,11 @@
             await analyzeNotesWithAI();
         });
 
+        // NEUER EVENT-LISTENER FÜR DIE GESAMTANALYSE
+        analyzeOverallButton.addEventListener('click', async () => {
+            await analyzeOverallNotesWithAI();
+        });
+
         // Schließen des KI-Analyse-Modals
         closeAnalysisModalButton.addEventListener('click', () => {
             analysisModal.classList.add('hidden');
@@ -808,13 +839,13 @@
             try {
                 const notesCollectionRef = collection(db, 'streuobst_wiese', selectedTreeId, 'notizen');
                 const querySnapshot = await getDocs(notesCollectionRef);
-                
+
                 if (querySnapshot.empty) {
                     showLoading(false);
                     showAlertDialog('Keine Notizen für diesen Baum zum Analysieren gefunden.');
                     return;
                 }
-                
+
                 const notes = [];
                 querySnapshot.forEach(doc => {
                     const noteData = doc.data();
@@ -826,18 +857,20 @@
 
                 const treeName = currentTreeData.name || 'Unbekannter Name';
                 const treeVariety = currentTreeData.variety || 'Unbekannte Sorte';
-                
+
                 // Wir fassen System-Prompt und Benutzerabfrage zusammen, um das API-Verhalten zu stabilisieren.
                 const combinedPrompt = `Sie sind ein erfahrener Gärtner und Obstbaumspezialist. Analysieren Sie die bereitgestellten Notizen für einen Obstbaum. Geben Sie eine prägnante Zusammenfassung der wichtigsten Beobachtungen und identifizieren Sie potenzielle Probleme oder empfohlene Maßnahmen. Schreiben Sie als wäre es eine kurze, professionelle Beurteilung.
-                
+
                 Baum: ${treeName}
                 Sorte: ${treeVariety}
-                
+
                 Analysiere die folgenden Notizen:\n\n${allNotesText}`;
-                
+
                 const payload = {
                     contents: [{
-                        parts: [{ text: combinedPrompt }]
+                        parts: [{
+                            text: combinedPrompt
+                        }]
                     }]
                 };
 
@@ -846,7 +879,9 @@
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -876,7 +911,95 @@
                 showAlertDialog(`Fehler bei der Analyse: ${error.message}`);
             }
         }
-        
+
+        // NEUE FUNKTION FÜR DIE GESAMTANALYSE DER STREUOBSTWIESE
+        async function analyzeOverallNotesWithAI() {
+            showLoading(true);
+            try {
+                // 1. Alle Bäume abrufen
+                const treesCollectionRef = collection(db, 'streuobst_wiese');
+                const treesSnapshot = await getDocs(treesCollectionRef);
+
+                if (treesSnapshot.empty) {
+                    showLoading(false);
+                    showAlertDialog('Es sind keine Bäume vorhanden, um eine Gesamtanalyse durchzuführen.');
+                    return;
+                }
+
+                const allNotes = [];
+                // 2. Für jeden Baum alle Notizen abrufen
+                for (const treeDoc of treesSnapshot.docs) {
+                    const treeData = treeDoc.data();
+                    const notesCollectionRef = collection(db, 'streuobst_wiese', treeDoc.id, 'notizen');
+                    const notesSnapshot = await getDocs(notesCollectionRef);
+
+                    notesSnapshot.forEach(noteDoc => {
+                        const noteData = noteDoc.data();
+                        const date = noteData.timestamp ? new Date(noteData.timestamp.seconds * 1000).toLocaleDateString('de-DE') : 'Datum unbekannt';
+                        // 3. Notizen mit Baum-Details formatieren
+                        allNotes.push(`Baum: ${treeData.name} (${treeData.variety}) - [${date}] ${noteData.text}`);
+                    });
+                }
+
+                if (allNotes.length === 0) {
+                    showLoading(false);
+                    showAlertDialog('Es gibt keine Notizen für eine Gesamtanalyse.');
+                    return;
+                }
+
+                const allNotesText = allNotes.join('\n');
+
+                const combinedPrompt = `Sie sind ein erfahrener Gärtner und Obstbaumspezialist. Analysieren Sie die bereitgestellten Notizen für die gesamte Streuobstwiese. 
+                Identifizieren Sie allgemeine Trends, wiederkehrende Probleme und den Gesamtzustand der Wiese. Geben Sie eine prägnante, professionelle Beurteilung, die sich auf das Gesamtbild der Wiese konzentriert.
+
+                Notizen für die gesamte Wiese:\n\n${allNotesText}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [{
+                            text: combinedPrompt
+                        }]
+                    }]
+                };
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `API-Fehler: ${response.statusText}`;
+                    if (response.status === 403) {
+                        errorMessage = "API-Fehler: Zugriff verweigert. Bitte überprüfen Sie den API-Schlüssel oder die Service-Berechtigungen.";
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const analysisText = candidate.content.parts[0].text;
+                    showLoading(false);
+                    showAnalysisModal(analysisText);
+                } else {
+                    showLoading(false);
+                    throw new Error('Keine Analyse von der KI erhalten.');
+                }
+
+            } catch (error) {
+                showLoading(false);
+                console.error("Fehler bei der Gesamt-KI-Analyse:", error);
+                showAlertDialog(`Fehler bei der Gesamt-Analyse: ${error.message}`);
+            }
+        }
+
         initializeAppAndAuth();
     </script>
 </body>
